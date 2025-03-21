@@ -34,7 +34,14 @@ const DealsBoard = () => {
 
   // Create deal mutation
   const createDealMutation = useMutation({
-    mutationFn: (dealData: any) => createDeal(dealData),
+    mutationFn: (dealData: {
+      title: string;
+      value: number;
+      company_id: string;
+      stage: Deal['stage'];
+      description?: string;
+      assigned_to?: string | null;
+    }) => createDeal(dealData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
       toast({
@@ -127,15 +134,35 @@ const DealsBoard = () => {
 
   // Handle add deal
   const handleAddDeal = async (data: any) => {
-    await createDealMutation.mutateAsync(data);
+    // Ensure we're passing the correct data structure to createDeal
+    const dealData = {
+      title: data.title,
+      value: data.value,
+      company_id: data.company_id,
+      stage: data.stage,
+      description: data.description || undefined,
+      assigned_to: data.assigned_to || null,
+    };
+    
+    await createDealMutation.mutateAsync(dealData);
   };
 
   // Handle edit deal
   const handleEditDeal = async (data: any) => {
     if (selectedDeal) {
+      // Ensure we're passing the correct data structure to updateDeal
+      const updates = {
+        title: data.title,
+        value: data.value,
+        company_id: data.company_id,
+        stage: data.stage,
+        description: data.description || undefined,
+        assigned_to: data.assigned_to || null,
+      };
+      
       await updateDealMutation.mutateAsync({
         id: selectedDeal.id,
-        updates: data
+        updates
       });
     }
   };
