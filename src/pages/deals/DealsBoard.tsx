@@ -1,18 +1,26 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DealColumn from '@/components/deals/DealColumn';
+import DealForm from '@/components/deals/DealForm';
+import DeleteDealDialog from '@/components/deals/DeleteDealDialog';
 import { Deal } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
-import { getDeals, updateDeal } from '@/services/dealService';
+import { getDeals, createDeal, updateDeal, deleteDeal } from '@/services/dealService';
 import { useToast } from '@/hooks/use-toast';
 
 const DealsBoard = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
+  
+  // State for managing dialogs
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   // Fetch deals
   const { 
@@ -24,6 +32,25 @@ const DealsBoard = () => {
     queryFn: getDeals
   });
 
+  // Create deal mutation
+  const createDealMutation = useMutation({
+    mutationFn: (dealData: any) => createDeal(dealData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      toast({
+        title: 'Deal created',
+        description: 'The deal has been successfully created',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error creating deal',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Update deal mutation
   const updateDealMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string, updates: any }) => 
@@ -32,13 +59,33 @@ const DealsBoard = () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
       toast({
         title: 'Deal updated',
-        description: 'The deal has been moved to a new stage',
+        description: 'The deal has been successfully updated',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: 'Error updating deal',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete deal mutation
+  const deleteDealMutation = useMutation({
+    mutationFn: (id: string) => deleteDeal(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      toast({
+        title: 'Deal deleted',
+        description: 'The deal has been successfully deleted',
+      });
+      setDeleteDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error deleting deal',
+        description: error.message || 'An error occurred',
         variant: 'destructive',
       });
     },
@@ -78,6 +125,40 @@ const DealsBoard = () => {
     setDraggedDealId(null);
   };
 
+  // Handle add deal
+  const handleAddDeal = async (data: any) => {
+    await createDealMutation.mutateAsync(data);
+  };
+
+  // Handle edit deal
+  const handleEditDeal = async (data: any) => {
+    if (selectedDeal) {
+      await updateDealMutation.mutateAsync({
+        id: selectedDeal.id,
+        updates: data
+      });
+    }
+  };
+
+  // Handle delete deal
+  const handleDeleteDeal = async () => {
+    if (selectedDeal) {
+      await deleteDealMutation.mutateAsync(selectedDeal.id);
+    }
+  };
+
+  // Open edit dialog
+  const openEditDialog = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setEditDialogOpen(true);
+  };
+
+  // Open delete dialog
+  const openDeleteDialog = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setDeleteDialogOpen(true);
+  };
+
   const getDealsForStage = (stage: Deal['stage']) => {
     return deals ? deals.filter((deal) => deal.stage === stage) : [];
   };
@@ -112,7 +193,7 @@ const DealsBoard = () => {
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Deal
             </Button>
@@ -136,10 +217,42 @@ const DealsBoard = () => {
                 onDrop={handleDrop}
                 count={getDealsForStage(stage.id).length}
                 value={getStageValue(stage.id)}
+                onEditDeal={openEditDialog}
+                onDeleteDeal={openDeleteDialog}
               />
             ))}
           </div>
         )}
+
+        {/* Add Deal Dialog */}
+        <DealForm
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSubmit={handleAddDeal}
+          title="Add Deal"
+          description="Add a new deal to your pipeline"
+        />
+
+        {/* Edit Deal Dialog */}
+        {selectedDeal && (
+          <DealForm
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSubmit={handleEditDeal}
+            deal={selectedDeal}
+            title="Edit Deal"
+            description="Update deal information"
+          />
+        )}
+
+        {/* Delete Deal Dialog */}
+        <DeleteDealDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteDeal}
+          deal={selectedDeal}
+          isDeleting={deleteDealMutation.isPending}
+        />
       </div>
     </DashboardLayout>
   );

@@ -13,6 +13,8 @@ interface DealColumnProps {
   onDrop: (e: React.DragEvent, stage: Deal['stage']) => void;
   count: number;
   value: number;
+  onEditDeal?: (deal: Deal) => void;
+  onDeleteDeal?: (deal: Deal) => void;
 }
 
 const DealColumn = ({
@@ -24,6 +26,8 @@ const DealColumn = ({
   onDrop,
   count,
   value,
+  onEditDeal,
+  onDeleteDeal,
 }: DealColumnProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -94,6 +98,8 @@ const DealColumn = ({
             key={deal.id}
             deal={deal}
             onDragStart={onDragStart}
+            onEdit={onEditDeal}
+            onDelete={onDeleteDeal}
           />
         ))}
       </div>

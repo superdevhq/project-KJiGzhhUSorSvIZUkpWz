@@ -4,12 +4,11 @@ import { Deal } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { MoreHorizontal, Users } from 'lucide-react';
+import { MoreHorizontal, Users, Edit, Trash } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -18,9 +17,11 @@ import { Button } from '@/components/ui/button';
 interface DealCardProps {
   deal: Deal;
   onDragStart: (e: React.DragEvent, dealId: string) => void;
+  onEdit?: (deal: Deal) => void;
+  onDelete?: (deal: Deal) => void;
 }
 
-const DealCard = ({ deal, onDragStart }: DealCardProps) => {
+const DealCard = ({ deal, onDragStart, onEdit, onDelete }: DealCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const formatCurrency = (value: number) => {
@@ -59,11 +60,25 @@ const DealCard = ({ deal, onDragStart }: DealCardProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem>Edit Deal</DropdownMenuItem>
-              <DropdownMenuItem>View Details</DropdownMenuItem>
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(deal)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Deal
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => window.open(`/deals/${deal.id}`, '_blank')}>
+                View Details
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">Delete Deal</DropdownMenuItem>
+              {onDelete && (
+                <DropdownMenuItem 
+                  className="text-red-600" 
+                  onClick={() => onDelete(deal)}
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete Deal
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

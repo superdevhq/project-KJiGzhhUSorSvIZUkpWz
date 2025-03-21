@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/shared/DataTable';
 import { Contact } from '@/types';
@@ -9,9 +9,21 @@ import { Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { getContacts } from '@/services/contactService';
+import { getContacts, createContact, updateContact, deleteContact } from '@/services/contactService';
+import { useToast } from '@/hooks/use-toast';
+import ContactForm from '@/components/customers/ContactForm';
+import DeleteContactDialog from '@/components/customers/DeleteContactDialog';
 
 const Customers = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  // State for managing dialogs
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
   // Fetch contacts
   const { 
     data: contacts, 
@@ -21,6 +33,106 @@ const Customers = () => {
     queryKey: ['contacts'],
     queryFn: getContacts
   });
+
+  // Create contact mutation
+  const createContactMutation = useMutation({
+    mutationFn: (contactData: any) => {
+      // Extract company object for activity description
+      const company = contactData.company;
+      return createContact({
+        ...contactData,
+        company: { name: company?.name || 'Unknown Company', id: contactData.company_id }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: 'Contact created',
+        description: 'The contact has been successfully created',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error creating contact',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update contact mutation
+  const updateContactMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
+      updateContact(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: 'Contact updated',
+        description: 'The contact has been successfully updated',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error updating contact',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: (id: string) => deleteContact(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: 'Contact deleted',
+        description: 'The contact has been successfully deleted',
+      });
+      setDeleteDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error deleting contact',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Handle add contact
+  const handleAddContact = async (data: any) => {
+    await createContactMutation.mutateAsync(data);
+  };
+
+  // Handle edit contact
+  const handleEditContact = async (data: any) => {
+    if (selectedContact) {
+      await updateContactMutation.mutateAsync({
+        id: selectedContact.id,
+        updates: data
+      });
+    }
+  };
+
+  // Handle delete contact
+  const handleDeleteContact = async () => {
+    if (selectedContact) {
+      await deleteContactMutation.mutateAsync(selectedContact.id);
+    }
+  };
+
+  // Open edit dialog
+  const openEditDialog = (contact: Contact) => {
+    setSelectedContact(contact);
+    setEditDialogOpen(true);
+  };
+
+  // Open delete dialog
+  const openDeleteDialog = (contact: Contact) => {
+    setSelectedContact(contact);
+    setDeleteDialogOpen(true);
+  };
 
   const columns = [
     {
@@ -86,6 +198,19 @@ const Customers = () => {
     console.log('View contact details:', contact);
   };
 
+  // Actions for the dropdown menu in each row
+  const rowActions = [
+    {
+      label: 'Edit',
+      onClick: (contact: Contact) => openEditDialog(contact),
+    },
+    {
+      label: 'Delete',
+      onClick: (contact: Contact) => openDeleteDialog(contact),
+      className: 'text-red-600',
+    },
+  ];
+
   if (error) {
     return (
       <DashboardLayout>
@@ -107,7 +232,7 @@ const Customers = () => {
               Manage your customer contacts and relationships
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
@@ -122,8 +247,39 @@ const Customers = () => {
             data={contacts || []}
             columns={columns}
             onRowClick={handleRowClick}
+            rowActions={rowActions}
           />
         )}
+
+        {/* Add Contact Dialog */}
+        <ContactForm
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSubmit={handleAddContact}
+          title="Add Customer"
+          description="Add a new customer contact to your CRM"
+        />
+
+        {/* Edit Contact Dialog */}
+        {selectedContact && (
+          <ContactForm
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSubmit={handleEditContact}
+            contact={selectedContact}
+            title="Edit Customer"
+            description="Update customer information"
+          />
+        )}
+
+        {/* Delete Contact Dialog */}
+        <DeleteContactDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteContact}
+          contact={selectedContact}
+          isDeleting={deleteContactMutation.isPending}
+        />
       </div>
     </DashboardLayout>
   );
