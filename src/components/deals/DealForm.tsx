@@ -209,7 +209,7 @@ const DealForm = ({
                     </FormControl>
                     <SelectContent>
                       {companiesLoading ? (
-                        <SelectItem value="loading" disabled>
+                        <SelectItem value="loading">
                           Loading companies...
                         </SelectItem>
                       ) : companies && companies.length > 0 ? (
@@ -219,7 +219,7 @@ const DealForm = ({
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="none" disabled>
+                        <SelectItem value="no-companies">
                           No companies available
                         </SelectItem>
                       )}
@@ -246,9 +246,9 @@ const DealForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {usersLoading ? (
-                        <SelectItem value="loading" disabled>
+                        <SelectItem value="loading">
                           Loading users...
                         </SelectItem>
                       ) : users && users.length > 0 ? (
@@ -258,7 +258,7 @@ const DealForm = ({
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="none" disabled>
+                        <SelectItem value="no-users">
                           No users available
                         </SelectItem>
                       )}
