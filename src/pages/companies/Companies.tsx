@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/shared/DataTable';
 import { Company } from '@/types';
@@ -9,9 +9,21 @@ import { Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { getCompanies } from '@/services/companyService';
+import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/services/companyService';
+import { useToast } from '@/hooks/use-toast';
+import CompanyForm from '@/components/companies/CompanyForm';
+import DeleteCompanyDialog from '@/components/companies/DeleteCompanyDialog';
 
 const Companies = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  // State for managing dialogs
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
   // Fetch companies
   const { 
     data: companies, 
@@ -21,6 +33,100 @@ const Companies = () => {
     queryKey: ['companies'],
     queryFn: getCompanies
   });
+
+  // Create company mutation
+  const createCompanyMutation = useMutation({
+    mutationFn: (companyData: Omit<Company, 'id' | 'createdAt' | 'updatedAt' | 'contacts'>) => 
+      createCompany(companyData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast({
+        title: 'Company created',
+        description: 'The company has been successfully created',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error creating company',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update company mutation
+  const updateCompanyMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: Partial<Omit<Company, 'id' | 'createdAt' | 'updatedAt' | 'contacts'>> }) => 
+      updateCompany(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast({
+        title: 'Company updated',
+        description: 'The company has been successfully updated',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error updating company',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete company mutation
+  const deleteCompanyMutation = useMutation({
+    mutationFn: (id: string) => deleteCompany(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast({
+        title: 'Company deleted',
+        description: 'The company has been successfully deleted',
+      });
+      setDeleteDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error deleting company',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Handle add company
+  const handleAddCompany = async (data: any) => {
+    await createCompanyMutation.mutateAsync(data);
+  };
+
+  // Handle edit company
+  const handleEditCompany = async (data: any) => {
+    if (selectedCompany) {
+      await updateCompanyMutation.mutateAsync({
+        id: selectedCompany.id,
+        updates: data,
+      });
+    }
+  };
+
+  // Handle delete company
+  const handleDeleteCompany = async () => {
+    if (selectedCompany) {
+      await deleteCompanyMutation.mutateAsync(selectedCompany.id);
+    }
+  };
+
+  // Open edit dialog
+  const openEditDialog = (company: Company) => {
+    setSelectedCompany(company);
+    setEditDialogOpen(true);
+  };
+
+  // Open delete dialog
+  const openDeleteDialog = (company: Company) => {
+    setSelectedCompany(company);
+    setDeleteDialogOpen(true);
+  };
 
   const columns = [
     {
@@ -79,6 +185,19 @@ const Companies = () => {
     console.log('View company details:', company);
   };
 
+  // Actions for the dropdown menu in each row
+  const rowActions = [
+    {
+      label: 'Edit',
+      onClick: (company: Company) => openEditDialog(company),
+    },
+    {
+      label: 'Delete',
+      onClick: (company: Company) => openDeleteDialog(company),
+      className: 'text-red-600',
+    },
+  ];
+
   if (error) {
     return (
       <DashboardLayout>
@@ -100,7 +219,7 @@ const Companies = () => {
               Manage your client companies and organizations
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Company
           </Button>
@@ -115,8 +234,39 @@ const Companies = () => {
             data={companies || []}
             columns={columns}
             onRowClick={handleRowClick}
+            rowActions={rowActions}
           />
         )}
+
+        {/* Add Company Dialog */}
+        <CompanyForm
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSubmit={handleAddCompany}
+          title="Add Company"
+          description="Add a new company to your CRM"
+        />
+
+        {/* Edit Company Dialog */}
+        {selectedCompany && (
+          <CompanyForm
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSubmit={handleEditCompany}
+            company={selectedCompany}
+            title="Edit Company"
+            description="Update company information"
+          />
+        )}
+
+        {/* Delete Company Dialog */}
+        <DeleteCompanyDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteCompany}
+          company={selectedCompany}
+          isDeleting={deleteCompanyMutation.isPending}
+        />
       </div>
     </DashboardLayout>
   );

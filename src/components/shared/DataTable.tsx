@@ -27,16 +27,24 @@ interface Column<T> {
   sortable?: boolean;
 }
 
+interface RowAction<T> {
+  label: string;
+  onClick: (item: T) => void;
+  className?: string;
+}
+
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
   onRowClick?: (item: T) => void;
+  rowActions?: RowAction<T>[];
 }
 
 const DataTable = <T extends Record<string, any>>({
   data,
   columns,
   onRowClick,
+  rowActions,
 }: DataTableProps<T>) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{
@@ -152,30 +160,31 @@ const DataTable = <T extends Record<string, any>>({
                     </TableCell>
                   ))}
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                          View details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-red-600"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {rowActions && rowActions.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          {rowActions.map((action, actionIndex) => (
+                            <DropdownMenuItem
+                              key={actionIndex}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                action.onClick(item);
+                              }}
+                              className={action.className}
+                            >
+                              {action.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
