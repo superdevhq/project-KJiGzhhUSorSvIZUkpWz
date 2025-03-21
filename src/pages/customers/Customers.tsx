@@ -13,6 +13,7 @@ import { getContacts, createContact, updateContact, deleteContact } from '@/serv
 import { useToast } from '@/hooks/use-toast';
 import ContactForm from '@/components/customers/ContactForm';
 import DeleteContactDialog from '@/components/customers/DeleteContactDialog';
+import CustomerViewDialog from '@/components/customers/CustomerViewDialog';
 
 const Customers = () => {
   const queryClient = useQueryClient();
@@ -22,6 +23,7 @@ const Customers = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Fetch contacts
@@ -122,6 +124,12 @@ const Customers = () => {
     }
   };
 
+  // Open view dialog
+  const openViewDialog = (contact: Contact) => {
+    setSelectedContact(contact);
+    setViewDialogOpen(true);
+  };
+
   // Open edit dialog
   const openEditDialog = (contact: Contact) => {
     setSelectedContact(contact);
@@ -194,12 +202,12 @@ const Customers = () => {
     },
   ];
 
-  const handleRowClick = (contact: Contact) => {
-    console.log('View contact details:', contact);
-  };
-
   // Actions for the dropdown menu in each row
   const rowActions = [
+    {
+      label: 'View Details',
+      onClick: (contact: Contact) => openViewDialog(contact),
+    },
     {
       label: 'Edit',
       onClick: (contact: Contact) => openEditDialog(contact),
@@ -246,7 +254,7 @@ const Customers = () => {
           <DataTable
             data={contacts || []}
             columns={columns}
-            onRowClick={handleRowClick}
+            onRowClick={openViewDialog}
             rowActions={rowActions}
           />
         )}
@@ -271,6 +279,14 @@ const Customers = () => {
             description="Update customer information"
           />
         )}
+
+        {/* View Contact Dialog */}
+        <CustomerViewDialog
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+          contact={selectedContact}
+          onEdit={openEditDialog}
+        />
 
         {/* Delete Contact Dialog */}
         <DeleteContactDialog
