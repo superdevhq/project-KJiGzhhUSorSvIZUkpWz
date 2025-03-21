@@ -33,19 +33,47 @@ const CallCustomerDialog = ({
   const handleCall = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Show success toast
-    toast({
-      title: 'Call initiated',
-      description: `Call to ${contact.name} with goal: ${callGoal}`,
-    });
-    
-    // Reset and close
-    setCallGoal('');
-    setIsSubmitting(false);
-    onOpenChange(false);
+    try {
+      // Prepare data for webhook
+      const callData = {
+        name: contact.name,
+        phone: contact.phone || 'No phone number available',
+        company: contact.company.name,
+        callGoal: callGoal
+      };
+      
+      // Send data to webhook
+      const response = await fetch('https://hook.us2.make.com/j44id7ybiv777ov8esagfm8gtiv44wdw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(callData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send call data');
+      }
+      
+      // Show success toast
+      toast({
+        title: 'Call initiated',
+        description: `Call to ${contact.name} with goal: ${callGoal}`,
+      });
+      
+      // Reset and close
+      setCallGoal('');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error sending call data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to initiate call. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
