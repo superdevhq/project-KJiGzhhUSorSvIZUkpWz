@@ -1,15 +1,48 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DealColumn from '@/components/deals/DealColumn';
-import { mockDeals } from '@/lib/mockData';
 import { Deal } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
+import { getDeals, updateDeal } from '@/services/dealService';
+import { useToast } from '@/hooks/use-toast';
 
 const DealsBoard = () => {
-  const [deals, setDeals] = useState<Deal[]>(mockDeals);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
+
+  // Fetch deals
+  const { 
+    data: deals, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['deals'],
+    queryFn: getDeals
+  });
+
+  // Update deal mutation
+  const updateDealMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
+      updateDeal(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      toast({
+        title: 'Deal updated',
+        description: 'The deal has been moved to a new stage',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error updating deal',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const stages: { id: Deal['stage']; title: string }[] = [
     { id: 'lead', title: 'Lead' },
@@ -31,26 +64,38 @@ const DealsBoard = () => {
   const handleDrop = (e: React.DragEvent, targetStage: Deal['stage']) => {
     e.preventDefault();
     
-    if (!draggedDealId) return;
+    if (!draggedDealId || !deals) return;
     
-    setDeals((prevDeals) =>
-      prevDeals.map((deal) =>
-        deal.id === draggedDealId
-          ? { ...deal, stage: targetStage, updatedAt: new Date().toISOString() }
-          : deal
-      )
-    );
+    const draggedDeal = deals.find(deal => deal.id === draggedDealId);
+    
+    if (draggedDeal && draggedDeal.stage !== targetStage) {
+      updateDealMutation.mutate({
+        id: draggedDealId,
+        updates: { stage: targetStage }
+      });
+    }
     
     setDraggedDealId(null);
   };
 
   const getDealsForStage = (stage: Deal['stage']) => {
-    return deals.filter((deal) => deal.stage === stage);
+    return deals ? deals.filter((deal) => deal.stage === stage) : [];
   };
 
   const getStageValue = (stage: Deal['stage']) => {
     return getDealsForStage(stage).reduce((sum, deal) => sum + deal.value, 0);
   };
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+          <h3 className="font-semibold">Error loading deals</h3>
+          <p>Please try refreshing the page.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -74,21 +119,27 @@ const DealsBoard = () => {
           </div>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 h-[calc(100vh-12rem)]">
-          {stages.map((stage) => (
-            <DealColumn
-              key={stage.id}
-              title={stage.title}
-              stage={stage.id}
-              deals={getDealsForStage(stage.id)}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              count={getDealsForStage(stage.id).length}
-              value={getStageValue(stage.id)}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <div className="flex space-x-4 overflow-x-auto pb-4 h-[calc(100vh-12rem)]">
+            {stages.map((stage) => (
+              <DealColumn
+                key={stage.id}
+                title={stage.title}
+                stage={stage.id}
+                deals={getDealsForStage(stage.id)}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                count={getDealsForStage(stage.id).length}
+                value={getStageValue(stage.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

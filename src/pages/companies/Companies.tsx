@@ -1,17 +1,26 @@
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/shared/DataTable';
-import { mockCompanies } from '@/lib/mockData';
 import { Company } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { getCompanies } from '@/services/companyService';
 
 const Companies = () => {
-  const [companies] = useState<Company[]>(mockCompanies);
+  // Fetch companies
+  const { 
+    data: companies, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['companies'],
+    queryFn: getCompanies
+  });
 
   const columns = [
     {
@@ -70,6 +79,17 @@ const Companies = () => {
     console.log('View company details:', company);
   };
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+          <h3 className="font-semibold">Error loading companies</h3>
+          <p>Please try refreshing the page.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -86,11 +106,17 @@ const Companies = () => {
           </Button>
         </div>
 
-        <DataTable
-          data={companies}
-          columns={columns}
-          onRowClick={handleRowClick}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <DataTable
+            data={companies || []}
+            columns={columns}
+            onRowClick={handleRowClick}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

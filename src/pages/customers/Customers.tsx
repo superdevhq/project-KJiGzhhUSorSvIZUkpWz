@@ -1,17 +1,26 @@
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/shared/DataTable';
-import { mockContacts } from '@/lib/mockData';
 import { Contact } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { getContacts } from '@/services/contactService';
 
 const Customers = () => {
-  const [contacts] = useState<Contact[]>(mockContacts);
+  // Fetch contacts
+  const { 
+    data: contacts, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: getContacts
+  });
 
   const columns = [
     {
@@ -77,6 +86,17 @@ const Customers = () => {
     console.log('View contact details:', contact);
   };
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+          <h3 className="font-semibold">Error loading customers</h3>
+          <p>Please try refreshing the page.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -93,11 +113,17 @@ const Customers = () => {
           </Button>
         </div>
 
-        <DataTable
-          data={contacts}
-          columns={columns}
-          onRowClick={handleRowClick}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <DataTable
+            data={contacts || []}
+            columns={columns}
+            onRowClick={handleRowClick}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
