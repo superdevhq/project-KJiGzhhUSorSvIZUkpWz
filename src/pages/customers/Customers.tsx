@@ -1,8 +1,7 @@
-
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import DataTable from '@/components/shared/DataTable';
+import LoadingDataTable from '@/components/shared/LoadingDataTable';
 import { Contact } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -14,10 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import ContactForm from '@/components/customers/ContactForm';
 import DeleteContactDialog from '@/components/customers/DeleteContactDialog';
 import CustomerViewDialog from '@/components/customers/CustomerViewDialog';
+import { useLoading } from '@/hooks/use-loading';
+import PageLoader from '@/components/ui/page-loader';
+import { Card, CardContent } from '@/components/ui/card';
 
 const Customers = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isLoading, withLoading } = useLoading(true);
   
   // State for managing dialogs
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -25,16 +28,25 @@ const Customers = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
-  // Fetch contacts
-  const { 
-    data: contacts, 
-    isLoading, 
-    error 
-  } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: getContacts
-  });
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const data = await withLoading(getContacts());
+        setContacts(data);
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch contacts. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    fetchContacts();
+  }, [toast, withLoading]);
 
   // Create contact mutation
   const createContactMutation = useMutation({
@@ -219,85 +231,74 @@ const Customers = () => {
     },
   ];
 
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="p-4 bg-red-50 text-red-800 rounded-md">
-          <h3 className="font-semibold">Error loading customers</h3>
-          <p>Please try refreshing the page.</p>
-        </div>
-      </DashboardLayout>
-    );
+  if (isLoading) {
+    return <PageLoader message="Loading customers..." />;
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-            <p className="text-muted-foreground">
-              Manage your customer contacts and relationships
-            </p>
-          </div>
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Customer
-          </Button>
+    <div className="flex flex-col gap-8 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Customers</h1>
+          <p className="text-muted-foreground">
+            Manage your customer relationships
+          </p>
         </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : (
-          <DataTable
-            data={contacts || []}
-            columns={columns}
-            onRowClick={openViewDialog}
-            rowActions={rowActions}
-          />
-        )}
-
-        {/* Add Contact Dialog */}
-        <ContactForm
-          open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
-          onSubmit={handleAddContact}
-          title="Add Customer"
-          description="Add a new customer contact to your CRM"
-        />
-
-        {/* Edit Contact Dialog */}
-        {selectedContact && (
-          <ContactForm
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            onSubmit={handleEditContact}
-            contact={selectedContact}
-            title="Edit Customer"
-            description="Update customer information"
-          />
-        )}
-
-        {/* View Contact Dialog */}
-        <CustomerViewDialog
-          open={viewDialogOpen}
-          onOpenChange={setViewDialogOpen}
-          contact={selectedContact}
-          onEdit={openEditDialog}
-        />
-
-        {/* Delete Contact Dialog */}
-        <DeleteContactDialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          onConfirm={handleDeleteContact}
-          contact={selectedContact}
-          isDeleting={deleteContactMutation.isPending}
-        />
+        <Button onClick={() => setAddDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Customer
+        </Button>
       </div>
-    </DashboardLayout>
+
+      <Card>
+        <CardContent className="p-6">
+          <LoadingDataTable
+            data={contacts}
+            columns={columns}
+            searchKey="name"
+            isLoading={isLoading}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Add Contact Dialog */}
+      <ContactForm
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSubmit={handleAddContact}
+        title="Add Customer"
+        description="Add a new customer contact to your CRM"
+      />
+
+      {/* Edit Contact Dialog */}
+      {selectedContact && (
+        <ContactForm
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSubmit={handleEditContact}
+          contact={selectedContact}
+          title="Edit Customer"
+          description="Update customer information"
+        />
+      )}
+
+      {/* View Contact Dialog */}
+      <CustomerViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        contact={selectedContact}
+        onEdit={openEditDialog}
+      />
+
+      {/* Delete Contact Dialog */}
+      <DeleteContactDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteContact}
+        contact={selectedContact}
+        isDeleting={deleteContactMutation.isPending}
+      />
+    </div>
   );
 };
 
