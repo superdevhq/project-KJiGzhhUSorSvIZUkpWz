@@ -9,7 +9,193 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          description: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          timestamp: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          description: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          timestamp?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          description?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          timestamp?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          industry: string | null
+          logo: string | null
+          name: string
+          size: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          logo?: string | null
+          name: string
+          size?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          logo?: string | null
+          name?: string
+          size?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          avatar: string | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          position: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          assigned_to: string | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          stage: string
+          title: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          assigned_to?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          stage: string
+          title: string
+          updated_at?: string | null
+          value: number
+        }
+        Update: {
+          assigned_to?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          stage?: string
+          title?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
