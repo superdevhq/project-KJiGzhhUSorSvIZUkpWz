@@ -32,6 +32,35 @@ const Navbar = () => {
     logout();
   };
 
+  // Get user initials or fallback
+  const getUserInitial = () => {
+    if (!user || !user.user_metadata || !user.user_metadata.name) {
+      // Try to get from email if name is not available
+      if (user?.email) {
+        return user.email.charAt(0).toUpperCase();
+      }
+      return 'U'; // Default fallback
+    }
+    return user.user_metadata.name.charAt(0);
+  };
+
+  // Get user display name
+  const getUserName = () => {
+    if (!user) return 'User';
+    
+    if (user.user_metadata && user.user_metadata.name) {
+      return user.user_metadata.name;
+    }
+    
+    // Fallback to email or a default
+    return user.email || 'User';
+  };
+
+  // Get user email
+  const getUserEmail = () => {
+    return user?.email || '';
+  };
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -115,17 +144,17 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
-                    <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={getUserName()} />
+                    <AvatarFallback>{getUserInitial()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-sm font-medium leading-none">{getUserName()}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
+                      {getUserEmail()}
                     </p>
                   </div>
                 </DropdownMenuLabel>
