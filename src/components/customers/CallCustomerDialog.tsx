@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import ButtonLoader from '@/components/ui/button-loader';
 
 interface CallCustomerDialogProps {
   open: boolean;
@@ -117,7 +116,7 @@ const CallCustomerDialog = ({
             onClick={handleCall}
             disabled={isSubmitting || !callGoal.trim() || !contact.phone}
           >
-            {isSubmitting ? <ButtonLoader text="Initiating Call..." /> : 'Start Call'}
+            {isSubmitting ? 'Initiating Call...' : 'Start Call'}
           </Button>
         </DialogFooter>
       </DialogContent>

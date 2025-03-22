@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/shared/DataTable';
 import { Company } from '@/types';
@@ -12,9 +13,6 @@ import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/ser
 import { useToast } from '@/hooks/use-toast';
 import CompanyForm from '@/components/companies/CompanyForm';
 import DeleteCompanyDialog from '@/components/companies/DeleteCompanyDialog';
-import LoadingDataTable from '@/components/shared/LoadingDataTable';
-import { useLoading } from '@/hooks/use-loading';
-import PageLoader from '@/components/ui/page-loader';
 
 const Companies = () => {
   const queryClient = useQueryClient();
@@ -25,25 +23,16 @@ const Companies = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const { isLoading, withLoading } = useLoading(true);
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const data = await withLoading(getCompanies());
-        setCompanies(data);
-      } catch (error) {
-        console.error('Error fetching companies:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch companies. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    fetchCompanies();
-  }, [toast, withLoading]);
+  // Fetch companies
+  const { 
+    data: companies, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['companies'],
+    queryFn: getCompanies
+  });
 
   // Create company mutation
   const createCompanyMutation = useMutation({
@@ -209,66 +198,77 @@ const Companies = () => {
     },
   ];
 
-  if (isLoading) {
-    return <PageLoader message="Loading companies..." />;
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+          <h3 className="font-semibold">Error loading companies</h3>
+          <p>Please try refreshing the page.</p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-8 p-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Companies</h1>
-          <p className="text-muted-foreground">
-            Manage your company relationships
-          </p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
+            <p className="text-muted-foreground">
+              Manage your client companies and organizations
+            </p>
+          </div>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Company
+          </Button>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Company
-        </Button>
-      </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <LoadingDataTable
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <DataTable
             data={companies || []}
             columns={columns}
-            searchKey="name"
-            isLoading={isLoading}
+            onRowClick={handleRowClick}
+            rowActions={rowActions}
           />
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Add Company Dialog */}
-      <CompanyForm
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSubmit={handleAddCompany}
-        title="Add Company"
-        description="Add a new company to your CRM"
-      />
-
-      {/* Edit Company Dialog */}
-      {selectedCompany && (
+        {/* Add Company Dialog */}
         <CompanyForm
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          onSubmit={handleEditCompany}
-          company={selectedCompany}
-          title="Edit Company"
-          description="Update company information"
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSubmit={handleAddCompany}
+          title="Add Company"
+          description="Add a new company to your CRM"
         />
-      )}
 
-      {/* Delete Company Dialog */}
-      <DeleteCompanyDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteCompany}
-        company={selectedCompany}
-        isDeleting={deleteCompanyMutation.isPending}
-      />
-    </div>
+        {/* Edit Company Dialog */}
+        {selectedCompany && (
+          <CompanyForm
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSubmit={handleEditCompany}
+            company={selectedCompany}
+            title="Edit Company"
+            description="Update company information"
+          />
+        )}
+
+        {/* Delete Company Dialog */}
+        <DeleteCompanyDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteCompany}
+          company={selectedCompany}
+          isDeleting={deleteCompanyMutation.isPending}
+        />
+      </div>
+    </DashboardLayout>
   );
 };
 

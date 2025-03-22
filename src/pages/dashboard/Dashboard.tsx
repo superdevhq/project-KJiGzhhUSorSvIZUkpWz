@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/dashboard/StatCard';
@@ -11,24 +11,21 @@ import { DollarSign, Users, Building2, TrendingUp, BarChart3 } from 'lucide-reac
 import { getDashboardStats } from '@/services/dashboardService';
 import { getActivities } from '@/services/activityService';
 import { getDeals } from '@/services/dealService';
-import { Deal, Activity } from '@/types';
-import PageLoader from '@/components/ui/page-loader';
-import { useToast } from '@/hooks/use-toast';
+import { Deal, Activity, DashboardStats } from '@/types';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const { toast } = useToast();
   
   // Fetch dashboard stats
   const { 
-    data: statsData, 
+    data: stats, 
     isLoading: statsLoading,
     error: statsError
   } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: getDashboardStats
   });
-
+  
   // Fetch activities
   const { 
     data: activities, 
@@ -38,7 +35,7 @@ const Dashboard = () => {
     queryKey: ['activities'],
     queryFn: () => getActivities(5)
   });
-
+  
   // Fetch deals for chart
   const { 
     data: deals, 
@@ -48,7 +45,7 @@ const Dashboard = () => {
     queryKey: ['deals'],
     queryFn: getDeals
   });
-
+  
   // Prepare data for charts
   const dealsByStage = deals ? [
     { name: 'Lead', count: deals.filter(d => d.stage === 'lead').length },
@@ -71,103 +68,128 @@ const Dashboard = () => {
   const isLoading = statsLoading || activitiesLoading || dealsLoading;
   const hasError = statsError || activitiesError || dealsError;
 
-  // Map icons to stats data
-  const stats = statsData ? [
-    { ...statsData[0], icon: DollarSign },
-    { ...statsData[1], icon: TrendingUp },
-    { ...statsData[2], icon: Users },
-    { ...statsData[3], icon: Building2 },
-  ] : [];
-
   if (hasError) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-8">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="rounded-full bg-red-100 p-3 text-red-600">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <h2 className="text-xl font-semibold">Error Loading Dashboard</h2>
-              <p className="text-muted-foreground">
-                There was a problem loading the dashboard data. Please try again later.
-              </p>
-              <button
-                className="mt-2 rounded-md bg-primary px-4 py-2 text-white"
-                onClick={() => window.location.reload()}
-              >
-                Retry
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardLayout>
+        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+          <h3 className="font-semibold">Error loading dashboard data</h3>
+          <p>Please try refreshing the page.</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
-  if (isLoading) {
-    return <PageLoader message="Loading dashboard..." />;
-  }
-
   return (
-    <div className="flex flex-col gap-8 p-8">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your sales performance
-        </p>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6 w-full">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Overview of your sales pipeline and recent activity
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <StatCard 
-            key={index} 
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            description={stat.description}
-            trend={stat.trend}
-            trendDirection={stat.trendDirection}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activities && <ActivityFeed activities={activities} />}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales Performance</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dealsByStage}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value) => [`${value} deals`, 'Count']}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '0.375rem',
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                title="Total Deals"
+                value={isLoading ? '...' : stats?.totalDeals.toString() || '0'}
+                icon={<DollarSign className="h-4 w-4" />}
+                description="Active deals in your pipeline"
+              />
+              <StatCard
+                title="Total Value"
+                value={isLoading ? '...' : formatCurrency(stats?.totalValue || 0)}
+                icon={<TrendingUp className="h-4 w-4" />}
+                description="Value of all deals"
+                trend={{ value: 12, positive: true }}
+              />
+              <StatCard
+                title="Won Deals"
+                value={isLoading ? '...' : stats?.wonDeals.toString() || '0'}
+                icon={<BarChart3 className="h-4 w-4" />}
+                description={isLoading ? '...' : `Value: ${formatCurrency(stats?.wonValue || 0)}`}
+              />
+              <StatCard
+                title="Conversion Rate"
+                value={isLoading ? '...' : `${stats?.conversionRate || 0}%`}
+                icon={<TrendingUp className="h-4 w-4" />}
+                description="Deals won vs. total deals"
+                trend={{ value: 5, positive: true }}
+              />
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Deals by Stage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="h-[300px] flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : (
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dealsByStage}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip 
+                            formatter={(value) => [`${value} deals`, 'Count']}
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '0.375rem',
+                            }}
+                          />
+                          <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {isLoading ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center h-[300px]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <ActivityFeed activities={activities || []} />
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px]">
+                  <p className="text-center text-muted-foreground py-8">
+                    Detailed analytics will be available in the next update.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
