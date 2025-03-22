@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { DataTable } from '@/components/shared/DataTable';
+import DataTable from '@/components/shared/DataTable';
 import TableLoader from '@/components/ui/table-loader';
 
 interface LoadingDataTableProps {
