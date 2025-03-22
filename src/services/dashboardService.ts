@@ -1,7 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardStats } from '@/types';
-import { DollarSign, Users, Building2, TrendingUp } from 'lucide-react';
 
 // Get dashboard statistics
 export const getDashboardStats = async () => {
@@ -32,7 +30,7 @@ export const getDashboardStats = async () => {
     ? Math.round((wonDeals / totalDeals) * 100) 
     : 0;
 
-  // Return formatted stats for the dashboard
+  // Return formatted stats for the dashboard (without icons)
   return [
     {
       title: 'Total Revenue',
@@ -42,7 +40,6 @@ export const getDashboardStats = async () => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(totalValue),
-      icon: DollarSign,
       description: `${totalDeals} total deals`,
       trend: '+12.5%',
       trendDirection: 'up',
@@ -50,7 +47,6 @@ export const getDashboardStats = async () => {
     {
       title: 'Closed Deals',
       value: wonDeals.toString(),
-      icon: TrendingUp,
       description: `${conversionRate}% conversion rate`,
       trend: '+5.2%',
       trendDirection: 'up',
@@ -58,7 +54,6 @@ export const getDashboardStats = async () => {
     {
       title: 'New Leads',
       value: newLeads.toString(),
-      icon: Users,
       description: 'This month',
       trend: '+3.1%',
       trendDirection: 'up',
@@ -66,7 +61,6 @@ export const getDashboardStats = async () => {
     {
       title: 'Active Companies',
       value: '24',
-      icon: Building2,
       description: '4 new this month',
       trend: '+2.5%',
       trendDirection: 'up',

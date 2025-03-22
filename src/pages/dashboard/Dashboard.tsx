@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/dashboard/StatCard';
@@ -12,9 +12,7 @@ import { getDashboardStats } from '@/services/dashboardService';
 import { getActivities } from '@/services/activityService';
 import { getDeals } from '@/services/dealService';
 import { Deal, Activity } from '@/types';
-import { useLoading } from '@/hooks/use-loading';
 import PageLoader from '@/components/ui/page-loader';
-import LoadingWrapper from '@/components/ui/loading-wrapper';
 import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
@@ -23,7 +21,7 @@ const Dashboard = () => {
   
   // Fetch dashboard stats
   const { 
-    data: stats, 
+    data: statsData, 
     isLoading: statsLoading,
     error: statsError
   } = useQuery({
@@ -73,6 +71,14 @@ const Dashboard = () => {
   const isLoading = statsLoading || activitiesLoading || dealsLoading;
   const hasError = statsError || activitiesError || dealsError;
 
+  // Map icons to stats data
+  const stats = statsData ? [
+    { ...statsData[0], icon: DollarSign },
+    { ...statsData[1], icon: TrendingUp },
+    { ...statsData[2], icon: Users },
+    { ...statsData[3], icon: Building2 },
+  ] : [];
+
   if (hasError) {
     return (
       <div className="flex h-full w-full items-center justify-center p-8">
@@ -113,8 +119,16 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats && stats.map((stat, index) => (
-          <StatCard key={index} {...stat} />
+        {stats.map((stat, index) => (
+          <StatCard 
+            key={index} 
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            description={stat.description}
+            trend={stat.trend}
+            trendDirection={stat.trendDirection}
+          />
         ))}
       </div>
 
