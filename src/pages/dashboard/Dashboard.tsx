@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -10,14 +11,15 @@ import { DollarSign, Users, Building2, TrendingUp, BarChart3 } from 'lucide-reac
 import { getDashboardStats } from '@/services/dashboardService';
 import { getActivities } from '@/services/activityService';
 import { getDeals } from '@/services/dealService';
-import { Deal, Activity, DashboardStats } from '@/types';
+import { Deal, Activity } from '@/types';
 import { useLoading } from '@/hooks/use-loading';
 import PageLoader from '@/components/ui/page-loader';
 import LoadingWrapper from '@/components/ui/loading-wrapper';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const { isLoading, withLoading } = useLoading(true);
+  const { toast } = useToast();
   
   // Fetch dashboard stats
   const { 
@@ -28,7 +30,7 @@ const Dashboard = () => {
     queryKey: ['dashboardStats'],
     queryFn: getDashboardStats
   });
-  
+
   // Fetch activities
   const { 
     data: activities, 
@@ -38,7 +40,7 @@ const Dashboard = () => {
     queryKey: ['activities'],
     queryFn: () => getActivities(5)
   });
-  
+
   // Fetch deals for chart
   const { 
     data: deals, 
@@ -48,7 +50,7 @@ const Dashboard = () => {
     queryKey: ['deals'],
     queryFn: getDeals
   });
-  
+
   // Prepare data for charts
   const dealsByStage = deals ? [
     { name: 'Lead', count: deals.filter(d => d.stage === 'lead').length },
@@ -68,7 +70,34 @@ const Dashboard = () => {
     }).format(value);
   };
 
+  const isLoading = statsLoading || activitiesLoading || dealsLoading;
   const hasError = statsError || activitiesError || dealsError;
+
+  if (hasError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-8">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-full bg-red-100 p-3 text-red-600">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+              <h2 className="text-xl font-semibold">Error Loading Dashboard</h2>
+              <p className="text-muted-foreground">
+                There was a problem loading the dashboard data. Please try again later.
+              </p>
+              <button
+                className="mt-2 rounded-md bg-primary px-4 py-2 text-white"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <PageLoader message="Loading dashboard..." />;
@@ -84,8 +113,8 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <StatCard key={stat.title} {...stat} />
+        {stats && stats.map((stat, index) => (
+          <StatCard key={index} {...stat} />
         ))}
       </div>
 
@@ -95,9 +124,7 @@ const Dashboard = () => {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <LoadingWrapper isLoading={isLoading}>
-              <ActivityFeed activities={activities} />
-            </LoadingWrapper>
+            {activities && <ActivityFeed activities={activities} />}
           </CardContent>
         </Card>
         <Card>
@@ -105,26 +132,24 @@ const Dashboard = () => {
             <CardTitle>Sales Performance</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
-            <LoadingWrapper isLoading={isLoading}>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dealsByStage}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value) => [`${value} deals`, 'Count']}
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.375rem',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </LoadingWrapper>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dealsByStage}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value) => [`${value} deals`, 'Count']}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.375rem',
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
